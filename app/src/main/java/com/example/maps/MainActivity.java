@@ -2,6 +2,7 @@ package com.example.maps;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.util.DisplayMetrics;
@@ -11,15 +12,33 @@ import org.osmdroid.config.Configuration;
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
+import org.osmdroid.views.overlay.Marker;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
 
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import org.osmdroid.config.Configuration;
+import org.osmdroid.util.GeoPoint;
+import org.osmdroid.views.MapView;
+import android.Manifest;
+
 public class MainActivity extends Activity {
+    private static final int PERMISSION_REQUEST_CODE = 1;
     MapView map = null;
     ScaleBarOverlay  mScaleBarOverlay;
     @Override public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Request necessary permissions
+        String[] permissions = {
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+        };
+        requestPermissions(permissions, PERMISSION_REQUEST_CODE);
 
         //handle permissions first, before map is created. not depicted here
 
@@ -44,9 +63,62 @@ public class MainActivity extends Activity {
 
         IMapController mapController = map.getController();
         mapController.setZoom(9.5);
-        GeoPoint startPoint = new GeoPoint(48.8583, 2.2944);
+        GeoPoint startPoint = new GeoPoint(-6.192409894804741, 106.81677894119021);
         mapController.setCenter(startPoint);
 
+        // Get user's location
+        MyLocationNewOverlay myLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(ctx), map);
+        myLocationOverlay.enableMyLocation();
+        map.getOverlays().add(myLocationOverlay);
+
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PERMISSION_REQUEST_CODE) {
+            // Check if the required permissions were granted
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permissions granted, do any required initialization
+                map.onResume();
+
+                // Get the user's location
+                getUserLocation();
+            } else {
+                // Permissions denied, handle the situation gracefully
+            }
+        }
+    }
+
+    private void getUserLocation() {
+        // Check if location permissions are granted
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+
+            // Request the user's location updates
+            map.getController().setCenter(new GeoPoint(map.getMapCenter()));
+            map.getController().setZoom(15);
+            map.getController().setCenter(new GeoPoint(map.getMapCenter()));
+            map.getController().animateTo(new GeoPoint(map.getMapCenter()));
+            map.setBuiltInZoomControls(true);
+            map.setMultiTouchControls(true);
+
+
+
+
+
+//            // Add a marker on the map
+//            Marker marker = new Marker(map);
+//            marker.setPosition(new GeoPoint(-6.192409894804741, 106.81677894119021));
+//            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
+//            map.getOverlays().add(marker);
+        } else {
+            // Permissions not granted, handle the situation gracefully
+        }
     }
 
     public void onResume(){
