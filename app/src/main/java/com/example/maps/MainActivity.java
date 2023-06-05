@@ -1,11 +1,15 @@
 package com.example.maps;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.util.DisplayMetrics;
+import android.widget.TextView;
 
 import org.osmdroid.api.IMapController;
 import org.osmdroid.config.Configuration;
@@ -21,16 +25,16 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import org.osmdroid.config.Configuration;
-import org.osmdroid.util.GeoPoint;
-import org.osmdroid.views.MapView;
-import android.Manifest;
-
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements LocationListener {
     private static final int PERMISSION_REQUEST_CODE = 1;
     MapView map = null;
-    ScaleBarOverlay  mScaleBarOverlay;
-    @Override public void onCreate(Bundle savedInstanceState) {
+    ScaleBarOverlay mScaleBarOverlay;
+    TextView speedTextView;
+    LocationManager locationManager;
+    boolean isLocationUpdatesEnabled = false;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         // Request necessary permissions
@@ -40,37 +44,20 @@ public class MainActivity extends Activity {
         };
         requestPermissions(permissions, PERMISSION_REQUEST_CODE);
 
-        //handle permissions first, before map is created. not depicted here
-
-        //load/initialize the osmdroid configuration, this can be done
+        // Load/initialize the osmdroid configuration
         Context ctx = getApplicationContext();
         Configuration.getInstance().load(ctx, PreferenceManager.getDefaultSharedPreferences(ctx));
-        //setting this before the layout is inflated is a good idea
-        //it 'should' ensure that the map has a writable location for the map cache, even without permissions
-        //if no tiles are displayed, you can try overriding the cache path using Configuration.getInstance().setCachePath
-        //see also StorageUtils
-        //note, the load method also sets the HTTP User Agent to your application's package name, abusing osm's tile servers will get you banned based on this string
 
-
-        //inflate and create the map
+        // Set the layout
         setContentView(R.layout.activity_main);
 
-        map = (MapView) findViewById(R.id.maps);
-        map.setTileSource(TileSourceFactory.MAPNIK);
+        // Get references to the views
+        map = findViewById(R.id.maps);
+        speedTextView = findViewById(R.id.speedTextView);
 
+        map.setTileSource(TileSourceFactory.MAPNIK);
         map.setBuiltInZoomControls(true);
         map.setMultiTouchControls(true);
-
-        IMapController mapController = map.getController();
-        mapController.setZoom(9.5);
-        GeoPoint startPoint = new GeoPoint(-6.192409894804741, 106.81677894119021);
-        mapController.setCenter(startPoint);
-
-        // Get user's location
-        MyLocationNewOverlay myLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(ctx), map);
-        myLocationOverlay.enableMyLocation();
-        map.getOverlays().add(myLocationOverlay);
-
     }
 
     @Override
@@ -98,44 +85,121 @@ public class MainActivity extends Activity {
                 ContextCompat.checkSelfPermission(this,
                         Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
 
+            // Get the user's location
+            MyLocationNewOverlay myLocationOverlay = new MyLocationNewOverlay(new GpsMyLocationProvider(this), map);
+            myLocationOverlay.enableMyLocation();
+            map.getOverlays().add(myLocationOverlay);
 
-            // Request the user's location updates
-            map.getController().setCenter(new GeoPoint(map.getMapCenter()));
-            map.getController().setZoom(15);
-            map.getController().setCenter(new GeoPoint(map.getMapCenter()));
-            map.getController().animateTo(new GeoPoint(map.getMapCenter()));
-            map.setBuiltInZoomControls(true);
-            map.setMultiTouchControls(true);
+            IMapController mapController = map.getController();
+            myLocationOverlay.runOnFirstFix(() -> {
+                Location location = myLocationOverlay.getLastFix();
 
+                if (location != null) {
+                    double latitude = location.getLatitude();
+                    double longitude = location.getLongitude();
+                    final GeoPoint userLocation = new GeoPoint(latitude, longitude);
 
+                    runOnUiThread(() -> {
+                        mapController.setCenter(userLocation);
+                    });
+                } else {
+                    // Handle the case where the location is not available
+                    // You can set a default location or display an error message
+                }
+            });
 
+            // Set map zoom level
+            mapController.setZoom(15);
 
-
-//            // Add a marker on the map
-//            Marker marker = new Marker(map);
-//            marker.setPosition(new GeoPoint(-6.192409894804741, 106.81677894119021));
-//            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-//            map.getOverlays().add(marker);
+            // Start listening for location updates
+            startLocationUpdates();
         } else {
             // Permissions not granted, handle the situation gracefully
         }
     }
 
-    public void onResume(){
-        super.onResume();
-        //this will refresh the osmdroid configuration on resuming.
-        //if you make changes to the configuration, use
-        //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        //Configuration.getInstance().load(this, PreferenceManager.getDefaultSharedPreferences(this));
-        map.onResume(); //needed for compass, my location overlays, v6.0.0 and up
+    private void startLocationUpdates() {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+            // Initialize the location manager
+            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+            // Request location updates
+            locationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    1000, // Minimum time interval between updates (in milliseconds)
+                    0, // Minimum distance between updates (in meters)
+                    this);
+
+            isLocationUpdatesEnabled = true;
+        } else {
+            // Permissions not granted, handle the situation gracefully
+        }
     }
 
-    public void onPause(){
+    private void stopLocationUpdates() {
+        if (locationManager != null) {
+            locationManager.removeUpdates(this);
+            isLocationUpdatesEnabled = false;
+        }
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        // Update the user's location on the map
+        double latitude = location.getLatitude();
+        double longitude = location.getLongitude();
+        final GeoPoint userLocation = new GeoPoint(latitude, longitude);
+
+        runOnUiThread(() -> {
+            IMapController mapController = map.getController();
+            mapController.setCenter(userLocation);
+
+            // Update the speed text view
+            float speed = location.getSpeed();
+            speedTextView.setText(String.format("Speed: %.2f m/s", speed));
+        });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        map.onResume();
+
+        if (!isLocationUpdatesEnabled) {
+            startLocationUpdates();
+        }
+    }
+
+    @Override
+    public void onPause() {
         super.onPause();
-        //this will refresh the osmdroid configuration on resuming.
-        //if you make changes to the configuration, use
-        //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        //Configuration.getInstance().save(this, prefs);
-        map.onPause();  //needed for compass, my location overlays, v6.0.0 and up
+        map.onPause();
+
+        if (isLocationUpdatesEnabled) {
+            stopLocationUpdates();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        stopLocationUpdates();
+    }
+
+    // Other LocationListener methods
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
     }
 }
