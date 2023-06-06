@@ -3,9 +3,8 @@ package com.example.maps;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
-import android.graphics.Paint;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -19,7 +18,6 @@ import org.osmdroid.tileprovider.tilesource.TileSourceFactory;
 import org.osmdroid.util.GeoPoint;
 import org.osmdroid.views.MapView;
 import org.osmdroid.views.overlay.Marker;
-import org.osmdroid.views.overlay.Polyline;
 import org.osmdroid.views.overlay.ScaleBarOverlay;
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider;
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay;
@@ -28,11 +26,6 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import com.example.maps.CustomPolyline;
-
 public class MainActivity extends Activity implements LocationListener {
     private static final int PERMISSION_REQUEST_CODE = 1;
     MapView map = null;
@@ -40,10 +33,6 @@ public class MainActivity extends Activity implements LocationListener {
     TextView speedTextView;
     LocationManager locationManager;
     boolean isLocationUpdatesEnabled = false;
-
-    private Marker destinationMarker;
-    private CustomPolyline trackLine;
-    private List<GeoPoint> trackPoints;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -63,17 +52,6 @@ public class MainActivity extends Activity implements LocationListener {
         // Set the layout
         setContentView(R.layout.activity_main);
 
-        trackLine = new CustomPolyline();
-        trackLine.setColor(Color.BLUE);
-        trackLine.setWidth(5f);
-
- /*       // Set the default color for all polylines
-        Polyline.setDefaultPaint(new Paint(Paint.ANTI_ALIAS_FLAG) {{
-            setColor(Color.BLUE); // Set the desired default stroke color
-            setStyle(Paint.Style.STROKE);
-            setStrokeWidth(5f);
-        }});*/
-
         // Get references to the views
         map = findViewById(R.id.maps);
         speedTextView = findViewById(R.id.speedTextView);
@@ -81,11 +59,6 @@ public class MainActivity extends Activity implements LocationListener {
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setBuiltInZoomControls(true);
         map.setMultiTouchControls(true);
-
-        trackPoints = new ArrayList<>();
-
-        map.getOverlayManager().add(trackLine);
-
     }
 
     @Override
@@ -141,6 +114,9 @@ public class MainActivity extends Activity implements LocationListener {
 
             // Start listening for location updates
             startLocationUpdates();
+
+            Intent serviceIntent = new Intent(this, LocationService.class);
+            startService(serviceIntent);
         } else {
             // Permissions not granted, handle the situation gracefully
         }
@@ -189,29 +165,7 @@ public class MainActivity extends Activity implements LocationListener {
             // Update the speed text view
             float speed = location.getSpeed();
             speedTextView.setText(String.format("Speed: %.2f m/s", speed));
-
-            // Add a destination marker
-            double destinationLatitude = -6.1931; // Example latitude
-            double destinationLongitude = 106.8217; // Example longitude
-            addDestinationMarker(destinationLatitude, destinationLongitude);
-
-            // Add the user's location to the track line
-            trackPoints.add(userLocation);
-
-            // Update the track line
-            updateTrackLine();
         });
-    }
-
-    private void updateTrackLine() {
-        if (trackLine != null) {
-            map.getOverlayManager().remove(trackLine);
-        }
-
-        trackLine.setPoints(trackPoints);
-
-        map.getOverlayManager().add(trackLine);
-        map.invalidate();
     }
 
     @Override
@@ -238,6 +192,8 @@ public class MainActivity extends Activity implements LocationListener {
     protected void onDestroy() {
         super.onDestroy();
         stopLocationUpdates();
+        Intent serviceIntent = new Intent(this, LocationService.class);
+        stopService(serviceIntent);
     }
 
     // Other LocationListener methods
@@ -251,22 +207,5 @@ public class MainActivity extends Activity implements LocationListener {
 
     @Override
     public void onProviderDisabled(String provider) {
-    }
-
-    private void addDestinationMarker(double latitude, double longitude) {
-        if (destinationMarker != null) {
-            map.getOverlays().remove(destinationMarker);
-        }
-
-        GeoPoint destination = new GeoPoint(latitude, longitude);
-        destinationMarker = new Marker(map);
-        destinationMarker.setPosition(destination);
-        destinationMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM);
-        destinationMarker.setIcon(ContextCompat.getDrawable(this, R.drawable.ic_destination_marker));
-        map.getOverlays().add(destinationMarker);
-
-        IMapController mapController = map.getController();
-        mapController.setCenter(destination);
-        map.invalidate(); // Refresh the map view
     }
 }
