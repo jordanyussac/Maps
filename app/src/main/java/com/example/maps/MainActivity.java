@@ -59,6 +59,9 @@ public class MainActivity extends Activity implements LocationListener {
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setBuiltInZoomControls(true);
         map.setMultiTouchControls(true);
+
+        // Start the LocationService
+        startService(new Intent(this, LocationService.class));
     }
 
     @Override
@@ -192,8 +195,8 @@ public class MainActivity extends Activity implements LocationListener {
     protected void onDestroy() {
         super.onDestroy();
         stopLocationUpdates();
-        Intent serviceIntent = new Intent(this, LocationService.class);
-        stopService(serviceIntent);
+//        Intent serviceIntent = new Intent(this, LocationService.class);
+//        stopService(serviceIntent);
     }
 
     // Other LocationListener methods

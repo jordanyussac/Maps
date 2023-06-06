@@ -1,18 +1,20 @@
 package com.example.maps;
+import android.Manifest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
 public class LocationService extends Service implements LocationListener {
@@ -71,15 +73,15 @@ public class LocationService extends Service implements LocationListener {
     }
 
     private void startLocationUpdates() {
-        try {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
             locationManager.requestLocationUpdates(
                     LocationManager.GPS_PROVIDER,
                     1000, // Minimum time interval between updates (in milliseconds)
                     0, // Minimum distance between updates (in meters)
                     this
             );
-        } catch (SecurityException e) {
-            e.printStackTrace();
         }
     }
 
@@ -92,14 +94,8 @@ public class LocationService extends Service implements LocationListener {
         double latitude = location.getLatitude();
         double longitude = location.getLongitude();
 
-        // Check if the latitude value is valid
-        if (latitude >= -90 && latitude <= 90) {
-            // Handle valid location update
-            Toast.makeText(this, "Location changed: " + latitude + ", " + longitude, Toast.LENGTH_SHORT).show();
-        } else {
-            // Handle invalid latitude value
-            Toast.makeText(this, "Invalid latitude value: " + latitude, Toast.LENGTH_SHORT).show();
-        }
+        // Handle the location update here
+        // You can send the location to your server, update UI, etc.
     }
 
     @Override
