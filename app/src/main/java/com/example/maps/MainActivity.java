@@ -12,6 +12,7 @@ import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.widget.TextView;
 
 import org.osmdroid.api.IMapController;
@@ -28,13 +29,27 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class MainActivity extends Activity implements LocationListener {
     private static final int PERMISSION_REQUEST_CODE = 1;
     MapView map = null;
     ScaleBarOverlay mScaleBarOverlay;
-    TextView speedTextView, txtLongitude,txtLatitude;
+    TextView speedTextView, txtLongitude, txtLatitude;
     LocationManager locationManager;
     boolean isLocationUpdatesEnabled = false;
+    private Timer timer;
+    private TimerTask timerTask;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -102,9 +117,16 @@ public class MainActivity extends Activity implements LocationListener {
 
             IMapController mapController = map.getController();
             myLocationOverlay.runOnFirstFix(() -> {
+                String fileName = "data.txt";
+                String filePath = "/storage/emulated/0/Android/data/com.example.maps/files/Eska/";
                 Location location = myLocationOverlay.getLastFix();
                 double latitude = location.getLatitude();
                 double longitude = location.getLongitude();
+                // Update the speed text view
+                float speed = location.getSpeed();
+
+                // Create a SimpleDateFormat instance with the desired format
+                SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
 
                 if (location != null) {
                     final GeoPoint userLocation = new GeoPoint(latitude, longitude);
@@ -113,6 +135,32 @@ public class MainActivity extends Activity implements LocationListener {
                         mapController.setCenter(userLocation);
                         txtLongitude.setText("Longitude : " + longitude);
                         txtLatitude.setText("Latitude : " + latitude);
+                        speedTextView.setText(String.format("Speed: %.2f m/s", speed));
+
+                        // Create a File object
+                        File file = new File(filePath + fileName);
+
+                        try {
+                            // Create the file if it doesn't exist
+                            if (!file.exists()) {
+                                file.createNewFile();
+                            }
+
+                            // Create a FileOutputStream to write to the file
+                            FileOutputStream fos = new FileOutputStream(file, true); // Pass 'true' to append data to the existing file
+
+                            // Create an OutputStreamWriter to write characters to the file
+                            OutputStreamWriter osw = new OutputStreamWriter(fos);
+
+                            // Write data to the file
+                            osw.write("Time : " + dateFormat.format(new Date()) + ", " + "Longitude : " + longitude + ", " + "Latitude : " + latitude + ", " + "Speed : " + String.format("Speed: %.2f m/s", speed) + "\n");
+
+                            // Close the OutputStreamWriter
+                            osw.close();
+
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
                     });
 
                 } else {
@@ -120,7 +168,6 @@ public class MainActivity extends Activity implements LocationListener {
                     // You can set a default location or display an error message
                 }
             });
-
 
 
             // Set map zoom level
@@ -162,15 +209,30 @@ public class MainActivity extends Activity implements LocationListener {
         if (locationManager != null) {
             locationManager.removeUpdates(this);
             isLocationUpdatesEnabled = false;
+
+            // Cancel the timer and timer task
+            if (timer != null) {
+                timer.cancel();
+            }
+            if (timerTask != null) {
+                timerTask.cancel();
+            }
         }
     }
 
     @Override
     public void onLocationChanged(Location location) {
+        String fileName = "data.txt";
+        String filePath = "/storage/emulated/0/Android/data/com.example.maps/files/Eska/";
+
+        // Create a File object
+        File file = new File(filePath + fileName);
+
         // Update the user's location on the map
         double latitude = location.getLatitude();
         double longitude = location.getLongitude();
         final GeoPoint userLocation = new GeoPoint(latitude, longitude);
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault());
 
         runOnUiThread(() -> {
             IMapController mapController = map.getController();
@@ -181,6 +243,35 @@ public class MainActivity extends Activity implements LocationListener {
             speedTextView.setText(String.format("Speed: %.2f m/s", speed));
             txtLongitude.setText("Longitude : " + longitude);
             txtLatitude.setText("Latitude : " + latitude);
+            timer = new Timer();
+            timerTask = new TimerTask() {
+                @Override
+                public void run() {
+                    try {
+                        // Create the file if it doesn't exist
+                        if (!file.exists()) {
+                            file.createNewFile();
+                        }
+
+                        // Create a FileOutputStream to write to the file
+                        FileOutputStream fos = new FileOutputStream(file, true); // Pass 'true' to append data to the existing file
+
+                        // Create an OutputStreamWriter to write characters to the file
+                        OutputStreamWriter osw = new OutputStreamWriter(fos);
+
+                        // Write data to the file
+                        osw.write("Time : " + dateFormat.format(new Date()) + ", " + "Longitude : " + longitude + ", " + "Latitude : " + latitude + ", " + "Speed : " + String.format("Speed: %.2f m/s", speed) + "\n");
+
+                        // Close the OutputStreamWriter
+                        osw.close();
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            // Schedule the timer task to run every minute (60000 milliseconds)
+            timer.schedule(timerTask, 0, 60000);
         });
     }
 
@@ -224,4 +315,27 @@ public class MainActivity extends Activity implements LocationListener {
     @Override
     public void onProviderDisabled(String provider) {
     }
+
+    public void writeToLogFile(String content) {
+        try {
+            String filename = "mi_exception_log";
+
+            // Get the file object
+            File file = new File(getApplicationContext().getFilesDir(), filename);
+
+            // Create a FileWriter object with append mode (true)
+            FileWriter writer = new FileWriter(file, true);
+
+            // Write the content to the file
+            writer.write(content);
+            writer.close();
+
+            // Writing to the file was successful
+            // Add any additional logic or error handling as needed
+        } catch (IOException e) {
+            e.printStackTrace();
+            // Handle the exception, log the error, or display an error message
+        }
+    }
+
 }
