@@ -11,15 +11,40 @@
             android:layout_width="fill_parent"
             android:layout_height="fill_parent" />
 
-        <TextView
-            android:id="@+id/speedTextView"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            android:layout_marginEnd="16dp"
-            android:text="Speed: "
-            android:textColor="@android:color/black"
-            android:textSize="16sp" />
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+                <TextView
+                    android:id="@+id/txtLongitude"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/black"
+                    android:text="Longitude : "
+                    />
+
+                <TextView
+                    android:id="@+id/txtLatitude"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@android:color/black"
+                    android:layout_alignParentEnd="true"
+                    android:text="Latitude : "
+                    />
+
+
+                <TextView
+                    android:id="@+id/speedTextView"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:text="Speed: "
+                    android:layout_alignParentBottom="true"
+                    android:textColor="@android:color/black"
+                    android:textSize="16sp" />
+
+        </RelativeLayout>
+
 
 
 </FrameLayout>

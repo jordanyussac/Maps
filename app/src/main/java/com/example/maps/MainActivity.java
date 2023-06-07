@@ -1,5 +1,7 @@
 package com.example.maps;
 
+import static com.example.maps.R.id.txtLongitude;
+
 import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
@@ -30,7 +32,7 @@ public class MainActivity extends Activity implements LocationListener {
     private static final int PERMISSION_REQUEST_CODE = 1;
     MapView map = null;
     ScaleBarOverlay mScaleBarOverlay;
-    TextView speedTextView;
+    TextView speedTextView, txtLongitude,txtLatitude;
     LocationManager locationManager;
     boolean isLocationUpdatesEnabled = false;
 
@@ -55,6 +57,10 @@ public class MainActivity extends Activity implements LocationListener {
         // Get references to the views
         map = findViewById(R.id.maps);
         speedTextView = findViewById(R.id.speedTextView);
+
+        txtLongitude = findViewById(R.id.txtLongitude);
+        txtLatitude = findViewById(R.id.txtLatitude);
+
 
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setBuiltInZoomControls(true);
@@ -97,20 +103,25 @@ public class MainActivity extends Activity implements LocationListener {
             IMapController mapController = map.getController();
             myLocationOverlay.runOnFirstFix(() -> {
                 Location location = myLocationOverlay.getLastFix();
+                double latitude = location.getLatitude();
+                double longitude = location.getLongitude();
 
                 if (location != null) {
-                    double latitude = location.getLatitude();
-                    double longitude = location.getLongitude();
                     final GeoPoint userLocation = new GeoPoint(latitude, longitude);
 
                     runOnUiThread(() -> {
                         mapController.setCenter(userLocation);
+                        txtLongitude.setText("Longitude : " + longitude);
+                        txtLatitude.setText("Latitude : " + latitude);
                     });
+
                 } else {
                     // Handle the case where the location is not available
                     // You can set a default location or display an error message
                 }
             });
+
+
 
             // Set map zoom level
             mapController.setZoom(15);
@@ -168,6 +179,8 @@ public class MainActivity extends Activity implements LocationListener {
             // Update the speed text view
             float speed = location.getSpeed();
             speedTextView.setText(String.format("Speed: %.2f m/s", speed));
+            txtLongitude.setText("Longitude : " + longitude);
+            txtLatitude.setText("Latitude : " + latitude);
         });
     }
 
