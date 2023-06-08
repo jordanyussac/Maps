@@ -118,7 +118,7 @@ public class MainActivity extends Activity implements LocationListener {
             IMapController mapController = map.getController();
             myLocationOverlay.runOnFirstFix(() -> {
                 String fileName = "data.txt";
-                String filePath = "/storage/emulated/0/Android/data/com.example.maps/files/Eska/";
+                String filePath = "/storage/emulated/0/Android/data/com.example.maps/files/";
                 Location location = myLocationOverlay.getLastFix();
                 double latitude = location.getLatitude();
                 double longitude = location.getLongitude();
@@ -223,7 +223,7 @@ public class MainActivity extends Activity implements LocationListener {
     @Override
     public void onLocationChanged(Location location) {
         String fileName = "data.txt";
-        String filePath = "/storage/emulated/0/Android/data/com.example.maps/files/Eska/";
+        String filePath = "/storage/emulated/0/Android/data/com.example.maps/files/";
 
         // Create a File object
         File file = new File(filePath + fileName);
